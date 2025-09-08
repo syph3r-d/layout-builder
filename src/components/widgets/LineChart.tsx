@@ -1,7 +1,7 @@
 import type { AlignedData, Options } from "uplot";
 import UplotReact from "uplot-react";
 import "uplot/dist/uPlot.min.css";
-import { dataMap } from "../../utils/data";
+import { lineDataMap as dataMap } from "../../utils/data";
 import { Select } from "antd";
 import { useState } from "react";
 const data: AlignedData = [
@@ -45,8 +45,6 @@ export const Chart = ({
             ? dataMap.find((d) => d.id === selectedData)?.data!
             : data
         }
-        onCreate={(chart) => {}}
-        onDelete={(chart) => {}}
       />
       <div className="w-full flex justify-center mt-2">
         <Select

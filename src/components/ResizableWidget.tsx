@@ -5,32 +5,36 @@ import { ResizableBox } from "react-resizable";
 export const ResizableWidget = ({
   children: child,
   height,
+  width,
+  setWidth,
   setHeight,
+  maxWidth,
 }: {
   children: ReactNode;
   height: number;
+  width: number;
+  setWidth: (width: number) => void;
   setHeight?: (height: number) => void;
+  maxWidth: number;
 }) => {
-  const [size, setSize] = useState({ width: 200 });
-
   const renderedChild = React.isValidElement(child)
     ? React.cloneElement(child as ReactElement, {
         //@ts-ignore
-        width: size.width,
+        width: width,
         height: height,
       })
     : child;
 
   return (
     <ResizableBox
-      width={size.width}
+      width={width}
       height={height}
       draggableOpts={{ enableUserSelectHack: false }}
       minConstraints={[100, 100]}
-      maxConstraints={[600, 400]}
+      maxConstraints={[maxWidth, 400]}
       onResize={(_, data) => {
-        setSize({ width: data.size.width });
         if (setHeight) setHeight(data.size.height);
+        if (setWidth) setWidth(data.size.width);
       }}
       className="relative p-4 "
       handle={
