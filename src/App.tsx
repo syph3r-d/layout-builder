@@ -116,7 +116,7 @@ export default function App() {
             </Draggable>
           ))}
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col">
           {layoutComponentsMap.map((section) => (
             <LayoutSection
               key={section.id}

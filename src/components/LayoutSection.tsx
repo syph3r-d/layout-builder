@@ -35,7 +35,7 @@ export const LayoutSection = ({
   };
   return (
     <div
-      className={`flex gap-2 justify-start max-w-full min-h-24 min-w-24 border border-blue-50 rounded-xl mx-2 p-2 ${
+      className={`flex gap-2 justify-start max-w-full min-h-24 min-w-24 rounded-xl mx-2 p-2 ${
         isOver ? "bg-blue-300" : "bg-blue-100"
       }`}
       ref={combinedRef}
