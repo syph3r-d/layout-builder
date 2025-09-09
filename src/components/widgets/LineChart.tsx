@@ -17,8 +17,8 @@ export const Chart = ({
   width?: number;
 }) => {
   const options: Options = {
-    width: width || 200,
-    height: height ? height - 100 : 140,
+    width: (width ?? 400) - 32,
+    height: height ? height - 105 : 140,
     scales: {
       x: {
         time: false,

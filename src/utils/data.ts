@@ -41,6 +41,90 @@ const barData3: BarChartData[] = [
   { title: "D", value: 65 },
 ];
 
+const tableData1 = {
+  data: [
+    {
+      key: "1",
+      name: "John Brown",
+      age: 32,
+      address: "New York No. 1 Lake Park",
+    },
+    {
+      key: "2",
+      name: "Jim Green",
+      age: 42,
+      address: "London No. 1 Lake Park",
+    },
+    {
+      key: "3",
+      name: "Joe Black",
+      age: 32,
+      address: "Sidney No. 1 Lake Park",
+    },
+  ],
+  columns: [
+    { title: "Name", dataIndex: "name", key: "name" },
+    { title: "Age", dataIndex: "age", key: "age" },
+    { title: "Address", dataIndex: "address", key: "address" },
+  ],
+};
+
+const tableData2 = {
+  data: [
+    {
+      key: "1",
+      name: "Alice",
+      age: 28,
+      address: "Los Angeles No. 1 Lake Park",
+    },
+    {
+      key: "2",
+      name: "Bob",
+      age: 35,
+      address: "Chicago No. 1 Lake Park",
+    },
+    {
+      key: "3",
+      name: "Charlie",
+      age: 30,
+      address: "Houston No. 1 Lake Park",
+    },
+  ],
+  columns: [
+    { title: "Name", dataIndex: "name", key: "name" },
+    { title: "Age", dataIndex: "age", key: "age" },
+    { title: "Address", dataIndex: "address", key: "address" },
+  ],
+};
+
+const tableData3 = {
+  data: [
+    {
+      key: "1",
+      name: "David",
+      age: 40,
+      address: "Seattle No. 1 Lake Park",
+    },
+    {
+      key: "2",
+      name: "Eva",
+      age: 29,
+      address: "Miami No. 1 Lake Park",
+    },
+    {
+      key: "3",
+      name: "Frank",
+      age: 33,
+      address: "Dallas No. 1 Lake Park",
+    },
+  ],
+  columns: [
+    { title: "Name", dataIndex: "name", key: "name" },
+    { title: "Age", dataIndex: "age", key: "age" },
+    { title: "Address", dataIndex: "address", key: "address" },
+  ],
+};
+
 export const lineDataMap = [
   {
     id: "data1",
@@ -68,5 +152,20 @@ export const barDataMap = [
   {
     id: "data3",
     data: barData3,
+  },
+];
+
+export const tableDataMap = [
+  {
+    id: "data1",
+    data: tableData1,
+  },
+  {
+    id: "data2",
+    data: tableData2,
+  },
+  {
+    id: "data3",
+    data: tableData3,
   },
 ];

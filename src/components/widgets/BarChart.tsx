@@ -62,11 +62,13 @@ const Barchart = ({ height, width }: { height?: number; width?: number }) => {
         ref={ref}
         style={{ width: "100%", display: "block" }}
       />
-      <Select
-        defaultValue={selectedData}
-        onChange={(value) => setSelectedData(value)}
-        options={dataMap.map((d) => ({ label: d.id, value: d.id }))}
-      />
+      <div className="w-full flex justify-center mt-2">
+        <Select
+          defaultValue={selectedData}
+          onChange={(value) => setSelectedData(value)}
+          options={dataMap.map((d) => ({ label: d.id, value: d.id }))}
+        />
+      </div>
     </div>
   );
 };

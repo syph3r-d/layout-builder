@@ -17,11 +17,16 @@ export const ResizableWidget = ({
   setHeight?: (height: number) => void;
   maxWidth: number;
 }) => {
+  const onSizeOverride = (size: { width: number; height: number }) => {
+    if (setWidth) setWidth(size.width);
+    if (setHeight) setHeight(size.height);
+  };
   const renderedChild = React.isValidElement(child)
     ? React.cloneElement(child as ReactElement, {
         //@ts-ignore
         width: width,
         height: height,
+        onSizeOverride: onSizeOverride,
       })
     : child;
 
@@ -30,13 +35,13 @@ export const ResizableWidget = ({
       width={width}
       height={height}
       draggableOpts={{ enableUserSelectHack: false }}
-      minConstraints={[100, 100]}
+      minConstraints={[200, 100]}
       maxConstraints={[maxWidth, 400]}
       onResize={(_, data) => {
         if (setHeight) setHeight(data.size.height);
         if (setWidth) setWidth(data.size.width);
       }}
-      className="relative p-4 "
+      className="relative p-4 overflow-auto"
       handle={
         <ExpandAltOutlined
           style={{

@@ -1,4 +1,3 @@
-import React from "react";
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
@@ -6,29 +5,28 @@ import { v4 as uuidv4 } from "uuid";
 import { Draggable } from "./components/Draggable";
 import { LayoutSection } from "./components/LayoutSection";
 import { useState } from "react";
-import { Chart } from "./components/widgets/LineChart";
 import { ResizableWidget } from "./components/ResizableWidget";
-import Barchart from "./components/widgets/BarChart";
-
-interface LayoutComponent {
-  id: string;
-  height: number;
-  setHeight?: (height: number) => void;
-}
-
-interface ComponentInstance {
-  id: string;
-  component: React.ReactNode;
-  width: number;
-  sectionId: string;
-  order: number;
-}
+import { widgetsComponents } from "./utils/widgetsConfig";
+import { TrashSection } from "./components/TrashSection";
 
 export default function App() {
   const [layoutComponentsMap, setLayoutComponentsMap] = useState<
     LayoutComponent[]
-  >([]);
+  >([
+    {
+      id: "1",
+      height: 200,
+      setHeight: (height: number) => {
+        setLayoutComponentsMap((current) =>
+          current.map((section) =>
+            section.id === "1" ? { ...section, height } : section
+          )
+        );
+      },
+    },
+  ]);
   const [componentsList, setComponentsList] = useState<ComponentInstance[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const onAddSection = () => {
     const newSectionId = uuidv4();
@@ -36,7 +34,6 @@ export default function App() {
       ...prev,
       {
         id: newSectionId,
-        component: [],
         height: 200,
         setHeight: (height: number) => {
           setLayoutComponentsMap((current) =>
@@ -49,22 +46,25 @@ export default function App() {
     ]);
   };
 
-  const widgetsComponents = [
-    {
-      name: "Line Chart",
-      component: <Chart />,
-      id: "base-line-chart",
-    },
-    {
-      name: "Bar Chart",
-      component: <Barchart />,
-      id: "base-bar-chart",
-    },
-  ];
-
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     const baseWidget = String(active.id).startsWith("base-");
+    if (String(over?.id) == "trash") {
+      // Deleting a widget
+      if (!baseWidget) {
+        const widgetIndex = componentsList.findIndex(
+          (widget) => widget.id === active.id
+        );
+        if (widgetIndex !== -1) {
+          setComponentsList((prev) => [
+            ...prev.slice(0, widgetIndex),
+            ...prev.slice(widgetIndex + 1),
+          ]);
+        }
+      }
+      setIsDragging(false);
+      return;
+    }
 
     if (over) {
       const sectionIndex = layoutComponentsMap.findIndex(
@@ -88,7 +88,7 @@ export default function App() {
                 {
                   id: uuidv4(),
                   component: widget,
-                  width: 200,
+                  width: 300,
                   sectionId: String(over.id),
                   order: widgetsInSection.length,
                 },
@@ -216,23 +216,63 @@ export default function App() {
       }
     }
   }
+
+  const calculateOccupiedWidth = (
+    sectionId: string,
+    currentComp?: ComponentInstance
+  ) => {
+    const parentPadding = 32;
+    const widgetPadding = 32;
+    const gap = 20;
+    const widgets = componentsList.filter((c) => c.sectionId === sectionId);
+    const numWidgets = widgets.length;
+    let otherWidgetsTotal = 0;
+    if (currentComp) {
+      otherWidgetsTotal = widgets
+        .filter((c) => c.id !== currentComp.id)
+        .reduce((sum, c) => sum + c.width, 0);
+    } else {
+      otherWidgetsTotal = widgets.reduce((sum, c) => sum + c.width, 0);
+    }
+    const totalGaps = (numWidgets - 1) * gap;
+    const totalWidgetPadding = numWidgets * widgetPadding;
+    const totalParentPadding = parentPadding;
+    const totalOccupied =
+      totalGaps + totalWidgetPadding + totalParentPadding + otherWidgetsTotal;
+    return totalOccupied;
+  };
+
+  const onSectionDelete = (sectionId: string) => {
+    setLayoutComponentsMap((prev) =>
+      prev.filter((section) => section.id !== sectionId)
+    );
+    setComponentsList((prev) =>
+      prev.filter((comp) => comp.sectionId !== sectionId)
+    );
+  };
   return (
     <>
       <div className="text-lg font-bold text-center">Layout Builder</div>
       <DndContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-2 my-2">
+        <div className="flex gap-2 my-2 justify-center mt-2">
           {widgetsComponents.map((widget) => (
             <Draggable key={widget.id} id={widget.id}>
-              {widget.name}
+              <div className="flex flex-col gap-2 justify-center text-center items-center w-24">
+                {widget.icon}
+                {widget.name}
+              </div>
             </Draggable>
           ))}
         </div>
+        <div className="text-center mb-2">Drag and drop widgets from here</div>
         <div className="flex flex-col">
           {layoutComponentsMap.map((section) => (
             <LayoutSection
               key={section.id}
               id={section.id}
               height={section.height}
+              occupiedWidth={calculateOccupiedWidth(section.id)}
+              onDelete={onSectionDelete}
             >
               {(width) => (
                 <>
@@ -240,7 +280,11 @@ export default function App() {
                     .filter((comp) => comp.sectionId === section.id)
                     .sort((a, b) => a.order - b.order)
                     .map((comp) => (
-                      <Draggable id={comp.id} key={comp.id}>
+                      <Draggable
+                        id={comp.id}
+                        key={comp.id}
+                        setIsDragging={setIsDragging}
+                      >
                         <ResizableWidget
                           key={comp.id}
                           height={section.height}
@@ -254,26 +298,11 @@ export default function App() {
                             );
                           }}
                           maxWidth={(() => {
-                            const parentPadding = 32;
-                            const widgetPadding = 32;
-                            const gap = 20;
-                            const widgets = componentsList.filter(
-                              (c) => c.sectionId === section.id
+                            const totalOccupied = calculateOccupiedWidth(
+                              section.id,
+                              comp
                             );
-                            const numWidgets = widgets.length;
-                            const otherWidgetsTotal = widgets
-                              .filter((c) => c.id !== comp.id)
-                              .reduce((sum, c) => sum + c.width, 0);
-                            const totalGaps = (numWidgets - 1) * gap;
-                            const totalWidgetPadding =
-                              numWidgets * widgetPadding;
-                            const totalParentPadding = parentPadding;
-                            const available =
-                              width -
-                              totalGaps -
-                              totalWidgetPadding -
-                              totalParentPadding -
-                              otherWidgetsTotal;
+                            const available = width - totalOccupied;
                             return Math.max(available, 100);
                           })()}
                         >
@@ -286,6 +315,11 @@ export default function App() {
             </LayoutSection>
           ))}
         </div>
+        {isDragging && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+            <TrashSection />
+          </div>
+        )}
       </DndContext>
       <div className="flex gap-2 justify-center">
         <hr />
