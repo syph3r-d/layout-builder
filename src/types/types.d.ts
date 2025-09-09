@@ -7,6 +7,7 @@ interface LayoutComponent {
 interface ComponentInstance {
   id: string;
   component: React.ReactNode;
+  type: string;
   width: number;
   sectionId: string;
   order: number;

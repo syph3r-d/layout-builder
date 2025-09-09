@@ -6,6 +6,10 @@ import { dashboardTemplates } from "./utils/widgetsConfig";
 export default function App() {
   type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 
+  const savedDashboards = JSON.parse(
+    localStorage.getItem("saved-dashboards") || "[]"
+  );
+
   const initialItems = [
     {
       label: "Example Dashboard",
@@ -13,15 +17,22 @@ export default function App() {
         <Canvas
           initialLayout={dashboardTemplates[0].layout}
           initialComponentList={dashboardTemplates[0].components}
+          canvasName="example-dashboard"
         />
       ),
       key: "1",
     },
-    {
-      label: "Empty Dashboard",
-      children: <Canvas initialLayout={[]} initialComponentList={[]} />,
-      key: "2",
-    },
+    ...savedDashboards.map((dashboard: any, index: number) => ({
+      label: dashboard.name || `Dashboard ${index + 2}`,
+      children: (
+        <Canvas
+          initialLayout={dashboard.layout}
+          initialComponentList={dashboard.components}
+          canvasName={dashboard.name || `dashboard-${index + 2}`}
+        />
+      ),
+      key: `dashboard-${index + 2}`,
+    })),
   ];
   const [activeKey, setActiveKey] = useState(initialItems[0].key);
   const [items, setItems] = useState(initialItems);
@@ -35,8 +46,14 @@ export default function App() {
     const newActiveKey = `newTab${newTabIndex.current++}`;
     const newPanes = [...items];
     newPanes.push({
-      label: "New Dashboard",
-      children: <Canvas initialLayout={[]} initialComponentList={[]} />,
+      label: `dashboard-${items.length++}`,
+      children: (
+        <Canvas
+          initialLayout={[]}
+          initialComponentList={[]}
+          canvasName={`dashboard-${items.length++}`}
+        />
+      ),
       key: newActiveKey,
     });
     setItems(newPanes);

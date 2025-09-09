@@ -12,14 +12,32 @@ import { TrashSection } from "./TrashSection";
 export const Canvas = ({
   initialLayout,
   initialComponentList,
+  canvasName,
 }: {
   initialLayout?: LayoutComponent[];
   initialComponentList?: ComponentInstance[];
+  canvasName: string;
 }) => {
+  const initialLayoutWithsetHeight = initialLayout?.map((section) => ({
+    ...section,
+    setHeight: (height: number) => {
+      setLayoutComponentsMap((current) =>
+        current.map((sec) => (sec.id === section.id ? { ...sec, height } : sec))
+      );
+    },
+  }));
+
+  const initialComponentListwithComponent = initialComponentList?.map(
+    (comp) => ({
+      ...comp,
+      component: widgetsComponents.find((w) => w.id === comp.type)?.component,
+    })
+  );
+
   const [layoutComponentsMap, setLayoutComponentsMap] = useState<
     LayoutComponent[]
   >(
-    initialLayout ?? [
+    initialLayoutWithsetHeight ?? [
       {
         id: "1",
         height: 200,
@@ -34,7 +52,7 @@ export const Canvas = ({
     ]
   );
   const [componentsList, setComponentsList] = useState<ComponentInstance[]>(
-    initialComponentList ?? []
+    initialComponentListwithComponent ?? []
   );
   const [isDragging, setIsDragging] = useState(false);
 
@@ -98,7 +116,8 @@ export const Canvas = ({
                 {
                   id: uuidv4(),
                   component: widget,
-                  width: 300,
+                  type: String(active.id),
+                  width: 0.3,
                   sectionId: String(over.id),
                   order: widgetsInSection.length,
                 },
@@ -229,7 +248,8 @@ export const Canvas = ({
 
   const calculateOccupiedWidth = (
     sectionId: string,
-    currentComp?: ComponentInstance
+    currentComp?: ComponentInstance,
+    containerWidth?: number
   ) => {
     const parentPadding = 32;
     const widgetPadding = 32;
@@ -237,12 +257,15 @@ export const Canvas = ({
     const widgets = componentsList.filter((c) => c.sectionId === sectionId);
     const numWidgets = widgets.length;
     let otherWidgetsTotal = 0;
-    if (currentComp) {
+    if (currentComp && containerWidth) {
       otherWidgetsTotal = widgets
         .filter((c) => c.id !== currentComp.id)
-        .reduce((sum, c) => sum + c.width, 0);
-    } else {
-      otherWidgetsTotal = widgets.reduce((sum, c) => sum + c.width, 0);
+        .reduce((sum, c) => sum + c.width * containerWidth, 0);
+    } else if (containerWidth) {
+      otherWidgetsTotal = widgets.reduce(
+        (sum, c) => sum + c.width * containerWidth,
+        0
+      );
     }
     const totalGaps = (numWidgets - 1) * gap;
     const totalWidgetPadding = numWidgets * widgetPadding;
@@ -260,15 +283,58 @@ export const Canvas = ({
       prev.filter((comp) => comp.sectionId !== sectionId)
     );
   };
+
+  const onSave = () => {
+    const savedDashboards = localStorage.getItem("saved-dashboards");
+
+    if (savedDashboards) {
+      const alreadyExists = JSON.parse(savedDashboards).some(
+        (d: any) => d.name === canvasName
+      );
+      if (alreadyExists) {
+        //overwrite
+        const parsed = JSON.parse(savedDashboards);
+        const updatedDashboards = parsed.map((d: any) =>
+          d.name === canvasName
+            ? { ...d, layout: layoutComponentsMap, components: componentsList }
+            : d
+        );
+        localStorage.setItem(
+          "saved-dashboards",
+          JSON.stringify(updatedDashboards)
+        );
+      } else {
+        const parsed = JSON.parse(savedDashboards);
+        localStorage.setItem(
+          "saved-dashboards",
+          JSON.stringify([
+            ...parsed,
+            {
+              name: canvasName,
+              layout: layoutComponentsMap,
+              components: componentsList,
+            },
+          ])
+        );
+      }
+    } else {
+      localStorage.setItem(
+        "saved-dashboards",
+        JSON.stringify([
+          {
+            name: canvasName,
+            layout: layoutComponentsMap,
+            components: componentsList,
+          },
+        ])
+      );
+    }
+  };
   return (
     <>
       <div className="text-lg font-bold text-center">Layout Builder</div>
       <div className="flex justify-center my-2">
-        <Button
-          onClick={() => console.log(componentsList, layoutComponentsMap)}
-        >
-          Save
-        </Button>
+        <Button onClick={onSave}>Save</Button>
       </div>
       <DndContext onDragEnd={handleDragEnd}>
         <div className="flex gap-2 my-2 justify-center mt-2">
@@ -306,18 +372,21 @@ export const Canvas = ({
                           key={comp.id}
                           height={section.height}
                           setHeight={section.setHeight}
-                          width={comp.width}
-                          setWidth={(width: number) => {
+                          width={comp.width * width}
+                          setWidth={(newWidth: number) => {
                             setComponentsList((prev) =>
                               prev.map((c) =>
-                                c.id === comp.id ? { ...c, width } : c
+                                c.id === comp.id
+                                  ? { ...c, width: newWidth / width }
+                                  : c
                               )
                             );
                           }}
                           maxWidth={(() => {
                             const totalOccupied = calculateOccupiedWidth(
                               section.id,
-                              comp
+                              comp,
+                              width
                             );
                             const available = width - totalOccupied;
                             return Math.max(available, 100);
