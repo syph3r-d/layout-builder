@@ -292,7 +292,6 @@ export const Canvas = ({
         (d: any) => d.name === canvasName
       );
       if (alreadyExists) {
-        //overwrite
         const parsed = JSON.parse(savedDashboards);
         const updatedDashboards = parsed.map((d: any) =>
           d.name === canvasName
