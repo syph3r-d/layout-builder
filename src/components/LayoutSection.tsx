@@ -19,8 +19,6 @@ export const LayoutSection = ({
   React.useEffect(() => {
     if (!sectionRef.current) return;
     const updateWidth = () => {
-      console.log(sectionRef.current!.offsetWidth);
-
       setWidth(sectionRef.current!.offsetWidth);
     };
     updateWidth();

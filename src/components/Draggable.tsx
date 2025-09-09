@@ -3,11 +3,12 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { HolderOutlined } from "@ant-design/icons";
 
 export function Draggable(props: { children: React.ReactNode; id: string }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: props.id,
   });
   const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
     id: props.id,
+    disabled: isDragging,
   });
   const style = transform
     ? {

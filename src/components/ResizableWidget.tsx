@@ -1,5 +1,5 @@
 import { ExpandAltOutlined } from "@ant-design/icons";
-import React, { useState, type ReactNode, type ReactElement } from "react";
+import React, { type ReactNode, type ReactElement } from "react";
 import { ResizableBox } from "react-resizable";
 
 export const ResizableWidget = ({
