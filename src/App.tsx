@@ -21,6 +21,7 @@ interface ComponentInstance {
   component: React.ReactNode;
   width: number;
   sectionId: string;
+  order: number;
 }
 
 export default function App() {
@@ -64,44 +65,154 @@ export default function App() {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     const baseWidget = String(active.id).startsWith("base-");
+
     if (over) {
       const sectionIndex = layoutComponentsMap.findIndex(
         (section) => section.id === over.id
       );
-      if (sectionIndex !== -1) {
+      const overWidget = componentsList.find((widget) => widget.id === over.id);
+
+      if (sectionIndex !== -1 || overWidget) {
         if (baseWidget) {
-          const widget = widgetsComponents.find(
-            (w) => w.id === active.id
-          )?.component;
-          if (widget) {
-            setComponentsList((prev) => [
-              ...prev,
-              {
-                id: uuidv4(),
-                component: widget,
-                width: 200,
-                sectionId: String(over.id),
-              },
-            ]);
+          // Only handle dropping base widgets on sections
+          if (sectionIndex !== -1) {
+            const widget = widgetsComponents.find(
+              (w) => w.id === active.id
+            )?.component;
+            if (widget) {
+              const widgetsInSection = componentsList.filter(
+                (c) => c.sectionId === over.id
+              );
+              setComponentsList((prev) => [
+                ...prev,
+                {
+                  id: uuidv4(),
+                  component: widget,
+                  width: 200,
+                  sectionId: String(over.id),
+                  order: widgetsInSection.length,
+                },
+              ]);
+            }
           }
         } else {
-          const draggedComponentIndex = componentsList.findIndex(
+          // Handle dropping existing widgets
+          const draggedIndex = componentsList.findIndex(
             (comp) => comp.id === active.id
           );
-          if (draggedComponentIndex !== -1) {
-            const updatedComponent = {
-              ...componentsList[draggedComponentIndex],
-              sectionId: String(over.id),
-            };
-            setComponentsList((prev) => {
-              const newList = [...prev];
-              newList.splice(draggedComponentIndex, 1);
-              newList.push(updatedComponent);
-              return newList;
-            });
+
+          if (draggedIndex !== -1) {
+            const dragged = componentsList[draggedIndex];
+
+            // Check if dropping on a widget
+            if (overWidget) {
+              if (dragged.sectionId === overWidget.sectionId) {
+                // Same section: reorder
+                let widgets = componentsList
+                  .filter((c) => c.sectionId === dragged.sectionId)
+                  .sort((a, b) => a.order - b.order);
+
+                const from = widgets.findIndex((c) => c.id === dragged.id);
+                const to = widgets.findIndex((c) => c.id === overWidget.id);
+
+                widgets.splice(from, 1);
+                widgets.splice(to, 0, dragged);
+
+                // Reassign order
+                widgets = widgets.map((w, idx) => ({ ...w, order: idx }));
+
+                // Update componentsList
+                setComponentsList((prev) => [
+                  ...prev.filter((c) => c.sectionId !== dragged.sectionId),
+                  ...widgets,
+                ]);
+              } else {
+                // Different section: move widget
+                const targetSectionWidgets = componentsList
+                  .filter((c) => c.sectionId === overWidget.sectionId)
+                  .sort((a, b) => a.order - b.order);
+
+                const insertIndex = targetSectionWidgets.findIndex(
+                  (c) => c.id === overWidget.id
+                );
+
+                // Remove from old section and add to new section
+                const updatedDragged = {
+                  ...dragged,
+                  sectionId: overWidget.sectionId,
+                  order: insertIndex,
+                };
+
+                // Update orders in target section
+                const updatedTargetWidgets = [
+                  ...targetSectionWidgets
+                    .slice(0, insertIndex)
+                    .map((w) => ({ ...w, order: w.order })),
+                  updatedDragged,
+                  ...targetSectionWidgets
+                    .slice(insertIndex)
+                    .map((w) => ({ ...w, order: w.order + 1 })),
+                ].map((w, idx) => ({ ...w, order: idx }));
+
+                // Update orders in source section
+                const sourceWidgets = componentsList
+                  .filter(
+                    (c) =>
+                      c.sectionId === dragged.sectionId && c.id !== dragged.id
+                  )
+                  .sort((a, b) => a.order - b.order)
+                  .map((w, idx) => ({ ...w, order: idx }));
+
+                // Update componentsList
+                setComponentsList((prev) => [
+                  ...prev.filter(
+                    (c) =>
+                      c.sectionId !== dragged.sectionId &&
+                      c.sectionId !== overWidget.sectionId
+                  ),
+                  ...sourceWidgets,
+                  ...updatedTargetWidgets,
+                ]);
+              }
+            } else if (sectionIndex !== -1) {
+              // Dropping on empty section or section area
+              const targetSectionId = String(over.id);
+              if (dragged.sectionId !== targetSectionId) {
+                const targetSectionWidgets = componentsList.filter(
+                  (c) => c.sectionId === targetSectionId
+                );
+
+                // Move to end of target section
+                const updatedDragged = {
+                  ...dragged,
+                  sectionId: targetSectionId,
+                  order: targetSectionWidgets.length,
+                };
+
+                // Update orders in source section
+                const sourceWidgets = componentsList
+                  .filter(
+                    (c) =>
+                      c.sectionId === dragged.sectionId && c.id !== dragged.id
+                  )
+                  .sort((a, b) => a.order - b.order)
+                  .map((w, idx) => ({ ...w, order: idx }));
+
+                // Update componentsList
+                setComponentsList((prev) => [
+                  ...prev.filter(
+                    (c) =>
+                      c.sectionId !== dragged.sectionId &&
+                      c.sectionId !== targetSectionId
+                  ),
+                  ...sourceWidgets,
+                  ...targetSectionWidgets,
+                  updatedDragged,
+                ]);
+              }
+            }
           }
         }
-        // setLayoutComponentsMap(newLayoutComponentsMap);
       }
     }
   }
@@ -127,6 +238,7 @@ export default function App() {
                 <>
                   {componentsList
                     .filter((comp) => comp.sectionId === section.id)
+                    .sort((a, b) => a.order - b.order)
                     .map((comp) => (
                       <Draggable id={comp.id} key={comp.id}>
                         <ResizableWidget
@@ -142,10 +254,9 @@ export default function App() {
                             );
                           }}
                           maxWidth={(() => {
-                            // LayoutSection: p-2 (16px total), gap-2 (8px), ResizableWidget: p-4 (32px per widget)
-                            const parentPadding = 32; // px (left+right)
-                            const widgetPadding = 32; // px (left+right)
-                            const gap = 20; // px
+                            const parentPadding = 32;
+                            const widgetPadding = 32;
+                            const gap = 20;
                             const widgets = componentsList.filter(
                               (c) => c.sectionId === section.id
                             );
@@ -153,7 +264,6 @@ export default function App() {
                             const otherWidgetsTotal = widgets
                               .filter((c) => c.id !== comp.id)
                               .reduce((sum, c) => sum + c.width, 0);
-                            // Total horizontal space taken by gaps and paddings
                             const totalGaps = (numWidgets - 1) * gap;
                             const totalWidgetPadding =
                               numWidgets * widgetPadding;

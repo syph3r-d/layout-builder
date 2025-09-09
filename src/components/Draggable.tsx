@@ -1,9 +1,12 @@
 import React from "react";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { HolderOutlined } from "@ant-design/icons";
 
 export function Draggable(props: { children: React.ReactNode; id: string }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: props.id,
+  });
+  const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
     id: props.id,
   });
   const style = transform
@@ -12,11 +15,18 @@ export function Draggable(props: { children: React.ReactNode; id: string }) {
       }
     : undefined;
 
+  const combinedRef = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    setDroppableNodeRef(node);
+  };
+
   return (
     <div
-      ref={setNodeRef}
+      ref={combinedRef}
       style={style}
-      className="flex items-center gap-1 bg-blue-200 rounded-xl"
+      className={`flex items-center gap-1  rounded-xl ${
+        isOver ? "bg-blue-300" : "bg-blue-200"
+      }`}
     >
       <span
         {...listeners}
