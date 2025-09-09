@@ -1,336 +1,86 @@
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
-import { Button } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
-import { v4 as uuidv4 } from "uuid";
-import { Draggable } from "./components/Draggable";
-import { LayoutSection } from "./components/LayoutSection";
-import { useState } from "react";
-import { ResizableWidget } from "./components/ResizableWidget";
-import { widgetsComponents } from "./utils/widgetsConfig";
-import { TrashSection } from "./components/TrashSection";
+import { Tabs } from "antd";
+import { Canvas } from "./components/Canvas";
+import { useRef, useState } from "react";
+import { dashboardTemplates } from "./utils/widgetsConfig";
 
 export default function App() {
-  const [layoutComponentsMap, setLayoutComponentsMap] = useState<
-    LayoutComponent[]
-  >([
+  type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
+
+  const initialItems = [
     {
-      id: "1",
-      height: 200,
-      setHeight: (height: number) => {
-        setLayoutComponentsMap((current) =>
-          current.map((section) =>
-            section.id === "1" ? { ...section, height } : section
-          )
-        );
-      },
+      label: "Example Dashboard",
+      children: (
+        <Canvas
+          initialLayout={dashboardTemplates[0].layout}
+          initialComponentList={dashboardTemplates[0].components}
+        />
+      ),
+      key: "1",
     },
-  ]);
-  const [componentsList, setComponentsList] = useState<ComponentInstance[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+    {
+      label: "Empty Dashboard",
+      children: <Canvas initialLayout={[]} initialComponentList={[]} />,
+      key: "2",
+    },
+  ];
+  const [activeKey, setActiveKey] = useState(initialItems[0].key);
+  const [items, setItems] = useState(initialItems);
+  const newTabIndex = useRef(0);
 
-  const onAddSection = () => {
-    const newSectionId = uuidv4();
-    setLayoutComponentsMap((prev) => [
-      ...prev,
-      {
-        id: newSectionId,
-        height: 200,
-        setHeight: (height: number) => {
-          setLayoutComponentsMap((current) =>
-            current.map((section) =>
-              section.id === newSectionId ? { ...section, height } : section
-            )
-          );
-        },
-      },
-    ]);
+  const onChange = (newActiveKey: string) => {
+    setActiveKey(newActiveKey);
   };
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    const baseWidget = String(active.id).startsWith("base-");
-    if (String(over?.id) == "trash") {
-      // Deleting a widget
-      if (!baseWidget) {
-        const widgetIndex = componentsList.findIndex(
-          (widget) => widget.id === active.id
-        );
-        if (widgetIndex !== -1) {
-          setComponentsList((prev) => [
-            ...prev.slice(0, widgetIndex),
-            ...prev.slice(widgetIndex + 1),
-          ]);
-        }
+  const add = () => {
+    const newActiveKey = `newTab${newTabIndex.current++}`;
+    const newPanes = [...items];
+    newPanes.push({
+      label: "New Dashboard",
+      children: <Canvas initialLayout={[]} initialComponentList={[]} />,
+      key: newActiveKey,
+    });
+    setItems(newPanes);
+    setActiveKey(newActiveKey);
+  };
+
+  const remove = (targetKey: TargetKey) => {
+    let newActiveKey = activeKey;
+    let lastIndex = -1;
+    items.forEach((item, i) => {
+      if (item.key === targetKey) {
+        lastIndex = i - 1;
       }
-      setIsDragging(false);
-      return;
-    }
-
-    if (over) {
-      const sectionIndex = layoutComponentsMap.findIndex(
-        (section) => section.id === over.id
-      );
-      const overWidget = componentsList.find((widget) => widget.id === over.id);
-
-      if (sectionIndex !== -1 || overWidget) {
-        if (baseWidget) {
-          // Only handle dropping base widgets on sections
-          if (sectionIndex !== -1) {
-            const widget = widgetsComponents.find(
-              (w) => w.id === active.id
-            )?.component;
-            if (widget) {
-              const widgetsInSection = componentsList.filter(
-                (c) => c.sectionId === over.id
-              );
-              setComponentsList((prev) => [
-                ...prev,
-                {
-                  id: uuidv4(),
-                  component: widget,
-                  width: 300,
-                  sectionId: String(over.id),
-                  order: widgetsInSection.length,
-                },
-              ]);
-            }
-          }
-        } else {
-          // Handle dropping existing widgets
-          const draggedIndex = componentsList.findIndex(
-            (comp) => comp.id === active.id
-          );
-
-          if (draggedIndex !== -1) {
-            const dragged = componentsList[draggedIndex];
-
-            // Check if dropping on a widget
-            if (overWidget) {
-              if (dragged.sectionId === overWidget.sectionId) {
-                // Same section: reorder
-                let widgets = componentsList
-                  .filter((c) => c.sectionId === dragged.sectionId)
-                  .sort((a, b) => a.order - b.order);
-
-                const from = widgets.findIndex((c) => c.id === dragged.id);
-                const to = widgets.findIndex((c) => c.id === overWidget.id);
-
-                widgets.splice(from, 1);
-                widgets.splice(to, 0, dragged);
-
-                // Reassign order
-                widgets = widgets.map((w, idx) => ({ ...w, order: idx }));
-
-                // Update componentsList
-                setComponentsList((prev) => [
-                  ...prev.filter((c) => c.sectionId !== dragged.sectionId),
-                  ...widgets,
-                ]);
-              } else {
-                // Different section: move widget
-                const targetSectionWidgets = componentsList
-                  .filter((c) => c.sectionId === overWidget.sectionId)
-                  .sort((a, b) => a.order - b.order);
-
-                const insertIndex = targetSectionWidgets.findIndex(
-                  (c) => c.id === overWidget.id
-                );
-
-                // Remove from old section and add to new section
-                const updatedDragged = {
-                  ...dragged,
-                  sectionId: overWidget.sectionId,
-                  order: insertIndex,
-                };
-
-                // Update orders in target section
-                const updatedTargetWidgets = [
-                  ...targetSectionWidgets
-                    .slice(0, insertIndex)
-                    .map((w) => ({ ...w, order: w.order })),
-                  updatedDragged,
-                  ...targetSectionWidgets
-                    .slice(insertIndex)
-                    .map((w) => ({ ...w, order: w.order + 1 })),
-                ].map((w, idx) => ({ ...w, order: idx }));
-
-                // Update orders in source section
-                const sourceWidgets = componentsList
-                  .filter(
-                    (c) =>
-                      c.sectionId === dragged.sectionId && c.id !== dragged.id
-                  )
-                  .sort((a, b) => a.order - b.order)
-                  .map((w, idx) => ({ ...w, order: idx }));
-
-                // Update componentsList
-                setComponentsList((prev) => [
-                  ...prev.filter(
-                    (c) =>
-                      c.sectionId !== dragged.sectionId &&
-                      c.sectionId !== overWidget.sectionId
-                  ),
-                  ...sourceWidgets,
-                  ...updatedTargetWidgets,
-                ]);
-              }
-            } else if (sectionIndex !== -1) {
-              // Dropping on empty section or section area
-              const targetSectionId = String(over.id);
-              if (dragged.sectionId !== targetSectionId) {
-                const targetSectionWidgets = componentsList.filter(
-                  (c) => c.sectionId === targetSectionId
-                );
-
-                // Move to end of target section
-                const updatedDragged = {
-                  ...dragged,
-                  sectionId: targetSectionId,
-                  order: targetSectionWidgets.length,
-                };
-
-                // Update orders in source section
-                const sourceWidgets = componentsList
-                  .filter(
-                    (c) =>
-                      c.sectionId === dragged.sectionId && c.id !== dragged.id
-                  )
-                  .sort((a, b) => a.order - b.order)
-                  .map((w, idx) => ({ ...w, order: idx }));
-
-                // Update componentsList
-                setComponentsList((prev) => [
-                  ...prev.filter(
-                    (c) =>
-                      c.sectionId !== dragged.sectionId &&
-                      c.sectionId !== targetSectionId
-                  ),
-                  ...sourceWidgets,
-                  ...targetSectionWidgets,
-                  updatedDragged,
-                ]);
-              }
-            }
-          }
-        }
+    });
+    const newPanes = items.filter((item) => item.key !== targetKey);
+    if (newPanes.length && newActiveKey === targetKey) {
+      if (lastIndex >= 0) {
+        newActiveKey = newPanes[lastIndex].key;
+      } else {
+        newActiveKey = newPanes[0].key;
       }
     }
-  }
+    setItems(newPanes);
+    setActiveKey(newActiveKey);
+  };
 
-  const calculateOccupiedWidth = (
-    sectionId: string,
-    currentComp?: ComponentInstance
+  const onEdit = (
+    targetKey: React.MouseEvent | React.KeyboardEvent | string,
+    action: "add" | "remove"
   ) => {
-    const parentPadding = 32;
-    const widgetPadding = 32;
-    const gap = 20;
-    const widgets = componentsList.filter((c) => c.sectionId === sectionId);
-    const numWidgets = widgets.length;
-    let otherWidgetsTotal = 0;
-    if (currentComp) {
-      otherWidgetsTotal = widgets
-        .filter((c) => c.id !== currentComp.id)
-        .reduce((sum, c) => sum + c.width, 0);
+    if (action === "add") {
+      add();
     } else {
-      otherWidgetsTotal = widgets.reduce((sum, c) => sum + c.width, 0);
+      remove(targetKey);
     }
-    const totalGaps = (numWidgets - 1) * gap;
-    const totalWidgetPadding = numWidgets * widgetPadding;
-    const totalParentPadding = parentPadding;
-    const totalOccupied =
-      totalGaps + totalWidgetPadding + totalParentPadding + otherWidgetsTotal;
-    return totalOccupied;
   };
 
-  const onSectionDelete = (sectionId: string) => {
-    setLayoutComponentsMap((prev) =>
-      prev.filter((section) => section.id !== sectionId)
-    );
-    setComponentsList((prev) =>
-      prev.filter((comp) => comp.sectionId !== sectionId)
-    );
-  };
   return (
-    <>
-      <div className="text-lg font-bold text-center">Layout Builder</div>
-      <DndContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-2 my-2 justify-center mt-2">
-          {widgetsComponents.map((widget) => (
-            <Draggable key={widget.id} id={widget.id}>
-              <div className="flex flex-col gap-2 justify-center text-center items-center w-24">
-                {widget.icon}
-                {widget.name}
-              </div>
-            </Draggable>
-          ))}
-        </div>
-        <div className="text-center mb-2">Drag and drop widgets from here</div>
-        <div className="flex flex-col">
-          {layoutComponentsMap.map((section) => (
-            <LayoutSection
-              key={section.id}
-              id={section.id}
-              height={section.height}
-              occupiedWidth={calculateOccupiedWidth(section.id)}
-              onDelete={onSectionDelete}
-            >
-              {(width) => (
-                <>
-                  {componentsList
-                    .filter((comp) => comp.sectionId === section.id)
-                    .sort((a, b) => a.order - b.order)
-                    .map((comp) => (
-                      <Draggable
-                        id={comp.id}
-                        key={comp.id}
-                        setIsDragging={setIsDragging}
-                      >
-                        <ResizableWidget
-                          key={comp.id}
-                          height={section.height}
-                          setHeight={section.setHeight}
-                          width={comp.width}
-                          setWidth={(width: number) => {
-                            setComponentsList((prev) =>
-                              prev.map((c) =>
-                                c.id === comp.id ? { ...c, width } : c
-                              )
-                            );
-                          }}
-                          maxWidth={(() => {
-                            const totalOccupied = calculateOccupiedWidth(
-                              section.id,
-                              comp
-                            );
-                            const available = width - totalOccupied;
-                            return Math.max(available, 100);
-                          })()}
-                        >
-                          {comp.component}
-                        </ResizableWidget>
-                      </Draggable>
-                    ))}
-                </>
-              )}
-            </LayoutSection>
-          ))}
-        </div>
-        {isDragging && (
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-            <TrashSection />
-          </div>
-        )}
-      </DndContext>
-      <div className="flex gap-2 justify-center">
-        <hr />
-        <Button
-          className="mt-2"
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={onAddSection}
-        ></Button>
-        <hr />
-      </div>
-    </>
+    <Tabs
+      type="editable-card"
+      onChange={onChange}
+      activeKey={activeKey}
+      onEdit={onEdit}
+      items={items}
+    />
   );
 }
