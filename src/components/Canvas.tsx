@@ -16,7 +16,7 @@ export const Canvas = ({
 }: {
   initialLayout?: LayoutComponent[];
   initialComponentList?: ComponentInstance[];
-  canvasName: string;
+  canvasName?: string;
 }) => {
   const [messageApi, contextHolder] = message.useMessage();
   const initialLayoutWithsetHeight = initialLayout?.map((section) => ({
@@ -346,9 +346,11 @@ export const Canvas = ({
     <>
       {contextHolder}
       <div className="text-lg font-bold text-center">Layout Builder</div>
-      <div className="flex justify-center my-2">
-        <Button onClick={onSave}>Save</Button>
-      </div>
+      {canvasName && (
+        <div className="flex justify-center my-2">
+          <Button onClick={onSave}>Save</Button>
+        </div>
+      )}
       <DndContext onDragEnd={handleDragEnd}>
         <div className="flex gap-2 my-2 justify-center mt-2">
           {widgetsComponents.map((widget) => (

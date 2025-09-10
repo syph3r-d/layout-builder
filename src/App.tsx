@@ -18,7 +18,7 @@ export default function App() {
         <Canvas
           initialLayout={dashboardTemplates[0].layout}
           initialComponentList={dashboardTemplates[0].components}
-          canvasName="example-dashboard"
+          canvasName={undefined}
         />
       ),
       key: "1",
