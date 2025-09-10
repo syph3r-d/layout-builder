@@ -8,14 +8,12 @@ export const LayoutSection = ({
   height,
   calculateOccupiedWidth,
   onDelete,
-  isDragging,
 }: {
   children: (width: number) => React.ReactNode;
   id: string;
   height: number;
   calculateOccupiedWidth: (containerWidth: number) => number;
   onDelete?: (id: string) => void;
-  isDragging: boolean;
 }) => {
   const [width, setWidth] = useState<number>(0);
   const [droppingDisabled, setDroppingDisabled] = useState(false);

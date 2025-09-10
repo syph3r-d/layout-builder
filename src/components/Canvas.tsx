@@ -373,7 +373,6 @@ export const Canvas = ({
                 calculateOccupiedWidth(section.id, undefined, containerWidth)
               }
               onDelete={onSectionDelete}
-              isDragging={isDragging}
             >
               {(width) => (
                 <>
