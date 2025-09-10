@@ -1,9 +1,10 @@
-import { Tabs } from "antd";
+import { message, Tabs } from "antd";
 import { Canvas } from "./components/Canvas";
 import { useRef, useState } from "react";
 import { dashboardTemplates } from "./utils/widgetsConfig";
 
 export default function App() {
+  const [messageApi, contextHolder] = message.useMessage();
   type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 
   const savedDashboards = JSON.parse(
@@ -87,17 +88,32 @@ export default function App() {
     if (action === "add") {
       add();
     } else {
+      const updatedDashboards = localStorage.getItem("saved-dashboards")
+        ? JSON.parse(localStorage.getItem("saved-dashboards") || "[]")
+        : [];
+      const targetIndex = items.findIndex((item) => item.key === targetKey);
+      if (targetIndex > 1) {
+        updatedDashboards.splice(targetIndex - 1, 1);
+        localStorage.setItem(
+          "saved-dashboards",
+          JSON.stringify(updatedDashboards)
+        );
+      }
       remove(targetKey);
+      messageApi.success("Dashboard deleted");
     }
   };
 
   return (
-    <Tabs
-      type="editable-card"
-      onChange={onChange}
-      activeKey={activeKey}
-      onEdit={onEdit}
-      items={items}
-    />
+    <>
+      {contextHolder}
+      <Tabs
+        type="editable-card"
+        onChange={onChange}
+        activeKey={activeKey}
+        onEdit={onEdit}
+        items={items}
+      />
+    </>
   );
 }

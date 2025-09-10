@@ -1,10 +1,10 @@
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { v4 as uuidv4 } from "uuid";
 import { Draggable } from "./Draggable";
 import { LayoutSection } from "./LayoutSection";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ResizableWidget } from "./ResizableWidget";
 import { widgetsComponents } from "../utils/widgetsConfig";
 import { TrashSection } from "./TrashSection";
@@ -18,6 +18,7 @@ export const Canvas = ({
   initialComponentList?: ComponentInstance[];
   canvasName: string;
 }) => {
+  const [messageApi, contextHolder] = message.useMessage();
   const initialLayoutWithsetHeight = initialLayout?.map((section) => ({
     ...section,
     setHeight: (height: number) => {
@@ -72,6 +73,7 @@ export const Canvas = ({
         },
       },
     ]);
+    messageApi.success("Added new section");
   };
 
   function handleDragEnd(event: DragEndEvent) {
@@ -91,6 +93,7 @@ export const Canvas = ({
         }
       }
       setIsDragging(false);
+      messageApi.success("Widget deleted");
       return;
     }
 
@@ -117,12 +120,13 @@ export const Canvas = ({
                   id: uuidv4(),
                   component: widget,
                   type: String(active.id),
-                  width: 0.3,
+                  width: 0.2,
                   sectionId: String(over.id),
                   order: widgetsInSection.length,
                 },
               ]);
             }
+            messageApi.success("Added new widget");
           }
         } else {
           // Handle dropping existing widgets
@@ -155,6 +159,7 @@ export const Canvas = ({
                   ...prev.filter((c) => c.sectionId !== dragged.sectionId),
                   ...widgets,
                 ]);
+                messageApi.success("Widget reordered");
               } else {
                 // Different section: move widget
                 const targetSectionWidgets = componentsList
@@ -202,6 +207,7 @@ export const Canvas = ({
                   ...sourceWidgets,
                   ...updatedTargetWidgets,
                 ]);
+                messageApi.success("Widget moved to another section");
               }
             } else if (sectionIndex !== -1) {
               // Dropping on empty section or section area
@@ -239,6 +245,7 @@ export const Canvas = ({
                   updatedDragged,
                 ]);
               }
+              messageApi.success("Widget moved to another section");
             }
           }
         }
@@ -246,34 +253,37 @@ export const Canvas = ({
     }
   }
 
-  const calculateOccupiedWidth = (
-    sectionId: string,
-    currentComp?: ComponentInstance,
-    containerWidth?: number
-  ) => {
-    const parentPadding = 32;
-    const widgetPadding = 32;
-    const gap = 20;
-    const widgets = componentsList.filter((c) => c.sectionId === sectionId);
-    const numWidgets = widgets.length;
-    let otherWidgetsTotal = 0;
-    if (currentComp && containerWidth) {
-      otherWidgetsTotal = widgets
-        .filter((c) => c.id !== currentComp.id)
-        .reduce((sum, c) => sum + c.width * containerWidth, 0);
-    } else if (containerWidth) {
-      otherWidgetsTotal = widgets.reduce(
-        (sum, c) => sum + c.width * containerWidth,
-        0
-      );
-    }
-    const totalGaps = (numWidgets - 1) * gap;
-    const totalWidgetPadding = numWidgets * widgetPadding;
-    const totalParentPadding = parentPadding;
-    const totalOccupied =
-      totalGaps + totalWidgetPadding + totalParentPadding + otherWidgetsTotal;
-    return totalOccupied;
-  };
+  const calculateOccupiedWidth = useCallback(
+    (
+      sectionId: string,
+      currentComp?: ComponentInstance,
+      containerWidth?: number
+    ) => {
+      const parentPadding = 38;
+      const widgetPadding = 34;
+      const gap = 8;
+      const widgets = componentsList.filter((c) => c.sectionId === sectionId);
+      const numWidgets = widgets.length;
+      let otherWidgetsTotal = 0;
+      if (currentComp && containerWidth) {
+        otherWidgetsTotal = widgets
+          .filter((c) => c.id !== currentComp.id)
+          .reduce((sum, c) => sum + c.width * containerWidth, 0);
+      } else if (containerWidth) {
+        otherWidgetsTotal = widgets.reduce(
+          (sum, c) => sum + c.width * containerWidth,
+          0
+        );
+      }
+      const totalGaps = (numWidgets - 1) * gap;
+      const totalWidgetPadding = numWidgets * widgetPadding;
+      const totalParentPadding = parentPadding;
+      const totalOccupied =
+        totalGaps + totalWidgetPadding + totalParentPadding + otherWidgetsTotal;
+      return totalOccupied;
+    },
+    [componentsList]
+  );
 
   const onSectionDelete = (sectionId: string) => {
     setLayoutComponentsMap((prev) =>
@@ -302,6 +312,7 @@ export const Canvas = ({
           "saved-dashboards",
           JSON.stringify(updatedDashboards)
         );
+        messageApi.success("Dashboard updated");
       } else {
         const parsed = JSON.parse(savedDashboards);
         localStorage.setItem(
@@ -315,6 +326,7 @@ export const Canvas = ({
             },
           ])
         );
+        messageApi.success("Dashboard saved");
       }
     } else {
       localStorage.setItem(
@@ -327,10 +339,12 @@ export const Canvas = ({
           },
         ])
       );
+      messageApi.success("Dashboard saved");
     }
   };
   return (
     <>
+      {contextHolder}
       <div className="text-lg font-bold text-center">Layout Builder</div>
       <div className="flex justify-center my-2">
         <Button onClick={onSave}>Save</Button>
@@ -353,8 +367,11 @@ export const Canvas = ({
               key={section.id}
               id={section.id}
               height={section.height}
-              occupiedWidth={calculateOccupiedWidth(section.id)}
+              calculateOccupiedWidth={(containerWidth) =>
+                calculateOccupiedWidth(section.id, undefined, containerWidth)
+              }
               onDelete={onSectionDelete}
+              isDragging={isDragging}
             >
               {(width) => (
                 <>
@@ -387,6 +404,7 @@ export const Canvas = ({
                               comp,
                               width
                             );
+
                             const available = width - totalOccupied;
                             return Math.max(available, 100);
                           })()}
