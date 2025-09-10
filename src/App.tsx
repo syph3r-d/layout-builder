@@ -22,6 +22,7 @@ export default function App() {
         />
       ),
       key: "1",
+      closable: false,
     },
     ...savedDashboards.map((dashboard: any, index: number) => ({
       label: dashboard.name || `Dashboard ${index + 2}`,

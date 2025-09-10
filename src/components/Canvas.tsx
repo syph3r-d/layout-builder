@@ -363,6 +363,11 @@ export const Canvas = ({
           ))}
         </div>
         <div className="text-center mb-2">Drag and drop widgets from here</div>
+        {layoutComponentsMap.length === 0 && (
+          <div className="text-center text-gray-500">
+            No sections. Click the + button below to add a section.
+          </div>
+        )}
         <div className="flex flex-col">
           {layoutComponentsMap.map((section) => (
             <LayoutSection
